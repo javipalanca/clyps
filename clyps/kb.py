@@ -38,25 +38,38 @@ class KnowledgeBase:
 
             # Go through all the rules
             for _rule in self.rules:
-                # Try to find a match for the rule
-                bindings = _rule.match(self.facts)
+                # Check if the rule contains variables
+                contains_variables = any(
+                    fact.entity.startswith("?") or fact.value.startswith("?")
+                    for fact in _rule.conditions
+                )
 
-                # If there is a match, execute the rule's actions
-                if bindings:
-                    for action in _rule.actions:
-                        try:
-                            # Apply the bindings to the action
-                            new_facts: List[Fact] = self._apply_bindings(action, bindings)
+                if contains_variables:
+                    # Try to find a match for the rule
+                    bindings = _rule.match(self.facts)
+                    if bindings:
+                        for action in _rule.actions:
+                            try:
+                                # Apply the bindings to the action
+                                new_facts: List[Fact] = self._apply_bindings(action, bindings)
 
-                            # Add the new fact to the list of facts if it isn't already there
-                            for new_fact in new_facts:
-                                if new_fact not in self.facts:
-                                    self.facts.append(new_fact)
-                                    new_facts_added = True
+                                # Add the new fact to the list of facts if it isn't already there
+                                for new_fact in new_facts:
+                                    if new_fact not in self.facts:
+                                        self.facts.append(new_fact)
+                                        new_facts_added = True
 
-                        # If there was an error applying the bindings, just move on to the next action
-                        except Exception as e:
-                            print(e)
+                            # If there was an error applying the bindings, just move on to the next action
+                            except Exception as e:
+                                print(e)
+                else:
+                    # If rule does not contain variables, check if all conditions are present in the facts
+                    if all(condition in self.facts for condition in _rule.conditions):
+                        # If all conditions are met, add the actions to the facts
+                        for action in _rule.actions:
+                            if action not in self.facts:
+                                self.facts.append(action)
+                                new_facts_added = True
 
     def _apply_bindings(self, action, bindings) -> List[Fact]:
         facts = []
