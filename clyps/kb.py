@@ -1,84 +1,67 @@
-from typing import List
-
+from .agenda import Agenda
 from .fact import Fact
 from .rule import Rule
 
 
 class KnowledgeBase:
-    """Represents a knowledge base with facts and rules."""
-
     def __init__(self):
-        self.facts = []
+        self.facts = set()
         self.rules = []
+        self.agenda = Agenda(kb=self)
 
-    def add_fact(self, _fact):
-        """Adds a fact to the knowledge base."""
-        self.facts.append(_fact)
+    def add_fact(self, fact):
+        """Añade un hecho a la base de conocimientos."""
+        self.facts.add(fact)
 
-    def remove_fact(self, _fact):
-        """Removes a fact from the knowledge base."""
-        if _fact in self.facts:
-            self.facts.remove(_fact)
+    def remove_fact(self, fact):
+        """Elimina un hecho de la base de conocimientos."""
+        self.facts.discard(fact)
 
-    def add_rule(self, _rule):
-        """Adds a rule to the knowledge base."""
-        self.rules.append(_rule)
+    def add_rule(self, rule):
+        """Añade una regla a la lista de reglas."""
+        self.rules.append(rule)
 
-    def remove_rule(self, _rule):
-        """Removes a rule from the knowledge base."""
-        if _rule in self.rules:
-            self.rules.remove(_rule)
+    def evaluate_rule(self, rule):
+        """Evalúa una regla y añade las acciones resultantes a la agenda."""
+        actions = rule.evaluate(self.facts)
+        self.agenda.add_actions(actions)
 
-    def infer(self) -> None:
-        """Infers new facts using the current facts and rules."""
-        new_facts_added: bool = True
-        while new_facts_added:
-            # Assume that no new facts will be added in this iteration
-            new_facts_added = False
+    def execute_agenda(self):
+        """Ejecuta las acciones en la agenda."""
+        self.agenda.execute()
 
-            # Go through all the rules
-            for _rule in self.rules:
-                # Check if the rule contains variables
-                contains_variables = any(
-                    fact.entity.startswith("?") or fact.value.startswith("?")
-                    for fact in _rule.conditions
-                )
+    def clear_agenda(self):
+        """Limpia la agenda."""
+        self.agenda.actions.clear()
 
-                if contains_variables:
-                    # Try to find a match for the rule
-                    bindings = _rule.match(self.facts)
-                    if bindings:
-                        for action in _rule.actions:
-                            try:
-                                # Apply the bindings to the action
-                                new_facts: List[Fact] = self._apply_bindings(action, bindings)
+    def run(self, max_iterations=1000):
+        """Ejecuta todas las reglas aplicables hasta que no haya más reglas que se puedan activar o se alcance el límite de iteraciones."""
+        iterations = 0
 
-                                # Add the new fact to the list of facts if it isn't already there
-                                for new_fact in new_facts:
-                                    if new_fact not in self.facts:
-                                        self.facts.append(new_fact)
-                                        new_facts_added = True
+        while iterations < max_iterations:
+            new_actions_added = False
 
-                            # If there was an error applying the bindings, just move on to the next action
-                            except Exception as e:
-                                print(e)
-                else:
-                    # If rule does not contain variables, check if all conditions are present in the facts
-                    if all(condition in self.facts for condition in _rule.conditions):
-                        # If all conditions are met, add the actions to the facts
-                        for action in _rule.actions:
-                            if action not in self.facts:
-                                self.facts.append(action)
-                                new_facts_added = True
+            # Evaluar todas las reglas y añadir acciones a la agenda
+            for rule in self.rules:
+                actions = rule.evaluate(self.facts)
+                if actions:
+                    new_actions_added = True
+                    self.agenda.add_actions(actions)
 
-    def _apply_bindings(self, action, bindings) -> List[Fact]:
-        facts = []
-        for binding in bindings:
-            if action.entity in binding:
-                entity = binding.get(action.entity, action.entity)
-                value = binding.get(action.value, action.value)
-                facts.append(Fact(entity, action.attribute, value))
-        return facts
+            # Si no se añadieron nuevas acciones a la agenda, terminar
+            if not new_actions_added:
+                break
+
+            # Ejecutar las acciones en la agenda
+            self.execute_agenda()
+
+            # Limpiar la agenda para el siguiente ciclo
+            self.clear_agenda()
+
+            iterations += 1
+
+        if iterations == max_iterations:
+            print(f"Advertencia: Se alcanzó el límite máximo de iteraciones ({max_iterations}).")
 
 
 # Example:
@@ -95,7 +78,7 @@ if __name__ == "__main__":
     kb.add_fact(fact2)
 
     # Adding rules
-    rule_str = "(defrule mammalRule (?animal has hair) => (?animal is mammal))"
+    rule_str = "(defrule mammalRule (?animal has hair) => (assert (?animal is mammal)))"
     rule = Rule.from_string(rule_str)
     kb.add_rule(rule)
 
@@ -104,7 +87,7 @@ if __name__ == "__main__":
     print(kb.facts)
     print(kb.rules)
 
-    kb.infer()
+    kb.run()
 
     # After inference
     print("\nAfter inference:")
