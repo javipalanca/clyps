@@ -23,7 +23,7 @@ def test_rule_repr():
     rule = Rule(
         "mammalRule", [Fact("animal", "has", "hair")], [Fact("animal", "is", "mammal")]
     )
-    assert repr(rule) == "IF (animal has hair) THEN (animal is mammal)"
+    assert repr(rule) == "((animal has hair) => (animal is mammal))"
 
 
 def test_rule_match():

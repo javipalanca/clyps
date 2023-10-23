@@ -73,7 +73,7 @@ class Rule:
     def __repr__(self):
         conditions_str = " AND ".join(map(str, self.conditions))
         actions_str = ", ".join(map(str, self.actions))
-        return f"IF {conditions_str} THEN {actions_str}"
+        return f"({conditions_str} => {actions_str})"
 
     def match(self, facts: List[Fact]) -> List[Dict[str, Any]]:
         all_bindings = []  # Lista para almacenar todos los sets de bindings encontrados
@@ -91,7 +91,8 @@ class Rule:
                 if local_bindings is not None:
                     # Verificar que no se estén sobrescribiendo los bindings existentes
                     conflicting_bindings = any(
-                        k in bindings and bindings[k] != v for k, v in local_bindings.items()
+                        k in bindings and bindings[k] != v
+                        for k, v in local_bindings.items()
                     )
                     if not conflicting_bindings:
                         bindings.update(local_bindings)
